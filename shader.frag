@@ -6,5 +6,6 @@ in vec3 WorldPosition;
 
 void main()
 {
-    Color = abs(WorldPosition);
+    //Color = vec3(0.25) + 0.75 * WorldPosition * WorldPosition;
+    Color = normalize(abs(WorldPosition));
 }

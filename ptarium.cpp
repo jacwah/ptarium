@@ -192,6 +192,55 @@ void MeshSphereCreate(mesh *Mesh, int ParallellCount, int MeridianCount)
     *Vertex++ = 0.0f;
 }
 
+struct sphere_pos {
+    float Radius;
+    float Pitch;
+    float Yaw;
+
+    sphere_pos(float R, float P, float Y)
+        : Radius(R)
+        , Pitch(0)
+        , Yaw(0)
+    {
+        dPitch(P);
+        dYaw(Y);
+    }
+
+    void dPitch(float P)
+    {
+        Pitch += P;
+        if (Pitch > PI)
+            Pitch = PI;
+        else if (Pitch <= 0)
+            // It stuff disappears at 0...
+            Pitch = 0.0001f;
+    }
+
+    void dYaw(float Y)
+    {
+        Yaw += Y;
+        // TODO
+        if (Yaw > 2*PI)
+            Yaw -= 2*PI;
+        else if (Yaw < 0)
+            Yaw += 2*PI;
+    }
+
+    glm::vec3 Cartesian() const
+    {
+        float SinPitch = sinf(Pitch);
+        float CosPitch = cosf(Pitch);
+        float SinYaw = sinf(Yaw);
+        float CosYaw = cosf(Yaw);
+
+        return glm::vec3(
+                Radius * SinPitch * CosYaw,
+                Radius * CosPitch,
+                Radius * SinPitch * SinYaw
+        );
+    }
+};
+
 int main()
 {
     SDL_Init(SDL_INIT_VIDEO);
@@ -224,6 +273,7 @@ int main()
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_MULTISAMPLE);
+    glEnable(GL_LINE_SMOOTH);
 
     float Points[] = {
         0.0f, 0.0f, 0.0f,
@@ -272,10 +322,8 @@ int main()
             (float) DISPLAY_WIDTH / (float) DISPLAY_HEIGHT,
             0.1f,
             100.0f);
-    glm::mat4 View = glm::lookAt(
-            glm::vec3(2.0f, 1.0f, 2.0f),
-            glm::vec3(0.0f, 0.0f, 0.0f),
-            glm::vec3(0.0f, 1.0f, 0.0f));
+
+    sphere_pos EyePos(4.0f, PI/2, 0.0f);
 
     GLuint TransformLocation = glGetUniformLocation(ShaderProgram, "Transform");
 
@@ -291,59 +339,55 @@ int main()
                     break;
                 case SDL_KEYDOWN:
                     {
-                    glm::vec4 Axis4 = glm::inverse(View) * glm::vec4(1.0f, 1.0f, 1.0f, 0.0f);
                     switch (Event.key.keysym.sym) {
                         case SDLK_UP:
-                            {
-                            //glm::vec3 Axis3(Axis4.x, 0.0f, Axis4.z);
-                            glm::vec3 Axis3(Axis4.x, 0.0f, 0.0f);
-                            View = glm::rotate(View, glm::radians(5.0f), Axis3);
-                            }
+                            EyePos.dPitch(glm::radians(5.0f));
                             break;
                         case SDLK_RIGHT:
-                            {
-                            glm::vec3 Axis3(0.0f, Axis4.y, 0.0f);
-                            View = glm::rotate(View, glm::radians(5.0f), Axis3);
-                            }
-                            //View = glm::rotate(View, glm::radians(1.0f), View * glm::vec4(0.0f, 1.0f, 0.0f, 0.0f));
+                            EyePos.dYaw(glm::radians(5.0f));
                             break;
                         case SDLK_DOWN:
-                            {
-                            //glm::vec3 Axis3(-Axis4.x, 0.0f, -Axis4.z);
-                            glm::vec3 Axis3(-Axis4.x, 0.0f, 0.0f);
-                            View = glm::rotate(View, glm::radians(5.0f), Axis3);
-                            }
-                            //View = glm::rotate(View, glm::radians(1.0f), View * glm::vec4(-1.0f, 0.0f, -1.0f, 0.0f));
+                            EyePos.dPitch(glm::radians(-5.0f));
                             break;
                         case SDLK_LEFT:
-                            {
-                            glm::vec3 Axis3(0.0f, -Axis4.y, 0.0f);
-                            View = glm::rotate(View, glm::radians(5.0f), Axis3);
-                            }
-                            //View = glm::rotate(View, glm::radians(1.0f), View * glm::vec4(0.0f, -1.0f, 0.0f, 0.0f));
+                            EyePos.dYaw(glm::radians(-5.0f));
                             break;
+                        case SDLK_p: {
+                            glm::vec3 Cart = EyePos.Cartesian();
+                            printf("r=%f\tp=%f\ty=%f\n",
+                                    EyePos.Radius,
+                                    EyePos.Pitch,
+                                    EyePos.Yaw);
+                            printf("x=%f\ty=%f\tz=%f\n",
+                                    Cart.x, Cart.y, Cart.z);
+                            break;
+                        }
                     }
                 }
             }
         }
 
+        glm::mat4 View = glm::lookAt(
+                EyePos.Cartesian(),
+                glm::vec3(0.0f),
+                glm::vec3(0.0f, 1.0f, 0.0f));
+
         glm::mat4 Transform = Perspective * View;
-        glUniformMatrix4fv(TransformLocation, 1, GL_FALSE, &Transform[0][0]);
+        glm::mat4 AxesView = Transform;
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glEnableVertexAttribArray(0);
 
-        glBindBuffer(GL_ARRAY_BUFFER, VertexBuffers[0]);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-        glDrawArrays(GL_LINES, 0, 6);
-
+        glUniformMatrix4fv(TransformLocation, 1, GL_FALSE, &Transform[0][0]);
         glBindBuffer(GL_ARRAY_BUFFER, VertexBuffers[1]);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
         glDrawElements(GL_TRIANGLES, Sphere.IndexCount, GL_UNSIGNED_SHORT, 0);
-        //glDrawArrays(GL_LINE_STRIP, 0, 1 + 10 * 10);
-        //glDrawArrays(GL_POINTS, 0, 10 * 10);
-        //glDrawArrays(GL_TRIANGLES, 0, 3);
+
+        glUniformMatrix4fv(TransformLocation, 1, GL_FALSE, &AxesView[0][0]);
+        glBindBuffer(GL_ARRAY_BUFFER, VertexBuffers[0]);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+        glDrawArrays(GL_LINES, 0, 6);
 
         glDisableVertexAttribArray(0);
 
