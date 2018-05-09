@@ -1,6 +1,7 @@
 #include <GL/glew.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
+#include <SDL2/SDL_timer.h>
 #include <glm/mat4x4.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <math.h>
@@ -330,6 +331,11 @@ int main(int argc, char *argv[])
 
     DEBUGERR();
 
+    Uint64 PerformanceHz = SDL_GetPerformanceFrequency();
+    Uint64 LastTime = SDL_GetPerformanceCounter();
+    Uint64 LastPrint = LastTime;
+    Uint64 PrintDist = PerformanceHz;
+
     bool Running = true;
     while (Running) {
         SDL_Event Event;
@@ -395,6 +401,15 @@ int main(int argc, char *argv[])
         glDisableVertexAttribArray(0);
 
         DEBUGERR();
+
+        Uint64 CurrentTime = SDL_GetPerformanceCounter();
+        if (CurrentTime > LastPrint + PrintDist) {
+            float FrameMs = 1000.0f * (CurrentTime - LastTime) / PerformanceHz;
+            printf("%.2f\n", FrameMs);
+            LastPrint = CurrentTime;
+        }
+        LastTime = CurrentTime;
+
         SDL_GL_SwapWindow(Window);
     }
 
