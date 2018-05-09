@@ -1,0 +1,5 @@
+TARGET = ptarium
+SHADER_TARGET = shaders.inc
+
+SOURCE = ptarium.cpp
+SHADER = shader.vert shader.frag
