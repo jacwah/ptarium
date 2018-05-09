@@ -1,0 +1,21 @@
+CFLAGS = /nologo /I ..\include
+LFLAGS = /libpath:..\lib sdl2.lib /subsystem:console sdl2main.lib glew32.lib opengl32.lib
+
+TARGET = ptarium
+SHADER_TARGET = shaders.inc
+
+SOURCE = ptarium.cpp
+SHADER = shader.vert shader.frag
+
+$(TARGET).exe: $(SOURCE) $(SHADER_TARGET)
+	@$(CXX) $(CFLAGS) /Fe:$@ $(SOURCE) /link $(LFLAGS)
+
+$(SHADER_TARGET): $(SHADER)
+	@del $@ 2> NUL
+	@for %f in ($(SHADER)) do @xxd -i %f >> $@
+
+clean:
+	@del $(TARGET).exe 2> NUL
+	@del $(TARGET).obj 2> NUL
+	@del $(SHADER_TARGET) 2> NUL
+
