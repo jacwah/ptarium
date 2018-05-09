@@ -341,6 +341,8 @@ int main(int argc, char *argv[])
                 case SDL_KEYDOWN:
                     {
                     switch (Event.key.keysym.sym) {
+			case SDLK_ESCAPE:
+			    Running = false;
                         case SDLK_UP:
                             EyePos.dPitch(glm::radians(5.0f));
                             break;
