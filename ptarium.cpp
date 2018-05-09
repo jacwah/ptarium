@@ -4,6 +4,7 @@
 #include <glm/mat4x4.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <math.h>
+#include <stdio.h>
 #include "shaders.inc"
 
 #define DISPLAY_WIDTH 960
@@ -241,7 +242,7 @@ struct sphere_pos {
     }
 };
 
-int main()
+int main(int argc, char *argv[])
 {
     SDL_Init(SDL_INIT_VIDEO);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
@@ -394,4 +395,6 @@ int main()
         DEBUGERR();
         SDL_GL_SwapWindow(Window);
     }
+
+    return 0;
 }
