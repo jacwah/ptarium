@@ -336,6 +336,7 @@ int main(int argc, char *argv[])
     Uint64 LastPrint = LastTime;
     Uint64 PrintDist = PerformanceHz;
 
+    bool PrintFrameTime = false;
     bool Running = true;
     while (Running) {
         SDL_Event Event;
@@ -347,8 +348,9 @@ int main(int argc, char *argv[])
                 case SDL_KEYDOWN:
                     {
                     switch (Event.key.keysym.sym) {
-			case SDLK_ESCAPE:
-			    Running = false;
+                        case SDLK_ESCAPE:
+                            Running = false;
+                            break;
                         case SDLK_UP:
                             EyePos.dPitch(glm::radians(5.0f));
                             break;
@@ -371,6 +373,9 @@ int main(int argc, char *argv[])
                                     Cart.x, Cart.y, Cart.z);
                             break;
                         }
+                        case SDLK_t:
+                            PrintFrameTime = !PrintFrameTime;
+                            break;
                     }
                 }
             }
@@ -403,7 +408,7 @@ int main(int argc, char *argv[])
         DEBUGERR();
 
         Uint64 CurrentTime = SDL_GetPerformanceCounter();
-        if (CurrentTime > LastPrint + PrintDist) {
+        if (PrintFrameTime && CurrentTime > LastPrint + PrintDist) {
             float FrameMs = 1000.0f * (CurrentTime - LastTime) / PerformanceHz;
             printf("%.2f\n", FrameMs);
             LastPrint = CurrentTime;
