@@ -11,7 +11,8 @@
 #define DISPLAY_WIDTH 960
 #define DISPLAY_HEIGHT 540
 
-void GLAPIENTRY DebugMessageCallback(
+void GLAPIENTRY
+DebugMessageCallback(
         GLenum Source,
         GLenum Type,
         GLuint Id,
@@ -27,7 +28,8 @@ void GLAPIENTRY DebugMessageCallback(
             Message);
 }
 
-void DebugError(const char *Filename, int Line)
+void
+DebugError(const char *Filename, int Line)
 {
     GLenum Error = glGetError();
     const char *ErrorMessage = NULL;
@@ -72,7 +74,8 @@ void DebugError(const char *Filename, int Line)
 
 #define DEBUGERR() DebugError(__FILE__, __LINE__)
 
-GLuint ShadersCompile()
+GLuint
+ShadersCompile()
 {
     GLchar *VertexSource = (GLchar *) shader_vert;
     GLchar *FragmentSource = (GLchar *) shader_frag;
@@ -114,7 +117,8 @@ struct mesh {
 
 #define PI 3.1415f
 
-void MeshSphereCreate(mesh *Mesh, int ParallellCount, int MeridianCount)
+void
+MeshSphereCreate(mesh *Mesh, int ParallellCount, int MeridianCount)
 {
     Mesh->VertexCount = 3 * (ParallellCount * MeridianCount + 2);
     Mesh->Vertices = (GLfloat *) malloc(sizeof(GLfloat) * Mesh->VertexCount);
@@ -243,7 +247,8 @@ struct sphere_pos {
     }
 };
 
-int main(int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
     SDL_Init(SDL_INIT_VIDEO);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
