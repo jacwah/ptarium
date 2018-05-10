@@ -1,6 +1,6 @@
 !INCLUDE Makefile.common
 
-CFLAGS = /nologo /I ..\include
+CFLAGS = /nologo /I ..\include /Zi
 LFLAGS = /libpath:..\lib sdl2.lib /subsystem:console sdl2main.lib glew32.lib opengl32.lib
 
 
@@ -14,6 +14,8 @@ $(SHADER_TARGET): $(SHADER)
 clean:
 	@del $(TARGET).exe 2> NUL
 	@del $(TARGET).obj 2> NUL
+	@del $(TARGET).ilk 2> NUL
+	@del *.pdb 2> NUL
 	@del $(SHADER_TARGET) 2> NUL
 
 run: $(TARGET).exe
