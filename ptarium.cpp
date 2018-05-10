@@ -11,10 +11,10 @@
 #define DISPLAY_WIDTH 960
 #define DISPLAY_HEIGHT 540
 
-void DebugMessageCallback(
+void GLAPIENTRY DebugMessageCallback(
         GLenum Source,
         GLenum Type,
-        GLenum Id,
+        GLuint Id,
         GLenum Severity,
         GLsizei Length,
         const GLchar *Message,
@@ -249,9 +249,8 @@ int main(int argc, char *argv[])
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-    SDL_GL_SetAttribute(
-            SDL_GL_CONTEXT_FLAGS,
-            SDL_GL_CONTEXT_DEBUG_FLAG | SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS,
+            SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG | SDL_GL_CONTEXT_DEBUG_FLAG);
     SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
     SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
 
@@ -266,12 +265,17 @@ int main(int argc, char *argv[])
 
     // Also load extensions not reported by driver
     glewExperimental = GL_TRUE;
-    glewInit();
+    if (GLEW_OK != glewInit()) {
+        fprintf(stderr, "Failed to initialize GLEW\n");
+        return 1;
+    }
 
-    // Wtf apple
-    //glEnable(GL_DEBUG_OUTPUT);
-    //glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-    //glDebugMessageCallback(DebugMessageCallback, 0);
+    if (GLEW_KHR_debug) {
+        fprintf(stderr, "Debug messages enabled.\n");
+        glEnable(GL_DEBUG_OUTPUT);
+        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+        glDebugMessageCallback(DebugMessageCallback, 0);
+    }
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_MULTISAMPLE);
