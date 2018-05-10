@@ -11,6 +11,8 @@
 #define DISPLAY_WIDTH 960
 #define DISPLAY_HEIGHT 540
 
+static bool GlobalUsingMessageCallback;
+
 void GLAPIENTRY
 DebugMessageCallback(
         GLenum Source,
@@ -31,45 +33,46 @@ DebugMessageCallback(
 void
 DebugError(const char *Filename, int Line)
 {
-    GLenum Error = glGetError();
-    const char *ErrorMessage = NULL;
+    GLenum Error;
 
-    switch (Error) {
-        case GL_NO_ERROR:
-            break;
-        case GL_INVALID_ENUM:
-            ErrorMessage = "Invalid enum";
-            break;
-        case GL_INVALID_VALUE:
-            ErrorMessage = "Invalid value";
-            break;
-        case GL_INVALID_OPERATION:
-            ErrorMessage = "Invalid operation";
-            break;
-        case GL_STACK_OVERFLOW:
-            ErrorMessage = "Stack overflow";
-            break;
-        case GL_STACK_UNDERFLOW:
-            ErrorMessage = "Stack underflow";
-            break;
-        case GL_OUT_OF_MEMORY:
-            ErrorMessage = "Out of memory";
-            break;
-        case GL_TABLE_TOO_LARGE:
-            ErrorMessage = "Table too large";
-            break;
-        default:
-            ErrorMessage = "Unknown error";
-            break;
+    if (GlobalUsingMessageCallback)
+        return;
+
+    while ((Error = glGetError()) != GL_NO_ERROR) {
+        const char *ErrorMessage = "Unknown error";
+
+        switch (Error) {
+            case GL_INVALID_ENUM:
+                ErrorMessage = "Invalid enum";
+                break;
+            case GL_INVALID_VALUE:
+                ErrorMessage = "Invalid value";
+                break;
+            case GL_INVALID_OPERATION:
+                ErrorMessage = "Invalid operation";
+                break;
+            case GL_STACK_OVERFLOW:
+                ErrorMessage = "Stack overflow";
+                break;
+            case GL_STACK_UNDERFLOW:
+                ErrorMessage = "Stack underflow";
+                break;
+            case GL_OUT_OF_MEMORY:
+                ErrorMessage = "Out of memory";
+                break;
+            case GL_TABLE_TOO_LARGE:
+                ErrorMessage = "Table too large";
+                break;
+        }
+
+        if (ErrorMessage)
+            fprintf(stderr,
+                    "OpenGL error (0x%X): %s found at %s:%d\n",
+                    Error,
+                    ErrorMessage,
+                    Filename,
+                    Line);
     }
-
-    if (ErrorMessage)
-        fprintf(stderr,
-                "OpenGL error (0x%X): %s found at %s:%d\n",
-                Error,
-                ErrorMessage,
-                Filename,
-                Line);
 }
 
 #define DEBUGERR() DebugError(__FILE__, __LINE__)
@@ -280,6 +283,7 @@ main(int argc, char *argv[])
         glEnable(GL_DEBUG_OUTPUT);
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
         glDebugMessageCallback(DebugMessageCallback, 0);
+        GlobalUsingMessageCallback = true;
     }
 
     glEnable(GL_DEPTH_TEST);
@@ -337,7 +341,6 @@ main(int argc, char *argv[])
     sphere_pos EyePos(4.0f, PI/2, 0.0f);
 
     GLuint TransformLocation = glGetUniformLocation(ShaderProgram, "Transform");
-
     DEBUGERR();
 
     Uint64 PerformanceHz = SDL_GetPerformanceFrequency();
