@@ -321,12 +321,16 @@ main(int argc, char *argv[])
     GLuint VertexBuffers[3];
     glGenBuffers(3, VertexBuffers);
 
-    glBindBuffer(GL_ARRAY_BUFFER, VertexBuffers[0]);
+    GLuint AxesVertBuf = VertexBuffers[0];
+    GLuint SphereVertBuf = VertexBuffers[1];
+    GLuint SphereIndBuf = VertexBuffers[2];
+
+    glBindBuffer(GL_ARRAY_BUFFER, AxesVertBuf);
     glBufferData(GL_ARRAY_BUFFER, sizeof(Axes), Axes, GL_STATIC_DRAW);
 
-    glBindBuffer(GL_ARRAY_BUFFER, VertexBuffers[1]);
+    glBindBuffer(GL_ARRAY_BUFFER, SphereVertBuf);
     glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * Sphere.VertexCount, Sphere.Vertices, GL_STATIC_DRAW);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, VertexBuffers[2]);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, SphereIndBuf);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLushort) * Sphere.IndexCount, Sphere.Indices, GL_STATIC_DRAW);
 
     GLuint ShaderProgram = ShadersCompile();
@@ -406,12 +410,12 @@ main(int argc, char *argv[])
         glEnableVertexAttribArray(0);
 
         glUniformMatrix4fv(TransformLocation, 1, GL_FALSE, &Transform[0][0]);
-        glBindBuffer(GL_ARRAY_BUFFER, VertexBuffers[1]);
+        glBindBuffer(GL_ARRAY_BUFFER, SphereVertBuf);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
         glDrawElements(GL_TRIANGLES, Sphere.IndexCount, GL_UNSIGNED_SHORT, 0);
 
         glUniformMatrix4fv(TransformLocation, 1, GL_FALSE, &AxesView[0][0]);
-        glBindBuffer(GL_ARRAY_BUFFER, VertexBuffers[0]);
+        glBindBuffer(GL_ARRAY_BUFFER, AxesVertBuf);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
         glDrawArrays(GL_LINES, 0, 6);
 
