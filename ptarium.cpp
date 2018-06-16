@@ -311,6 +311,12 @@ main(int argc, char *argv[])
         0.0f, 0.0f, 1.0f,
     };
 
+    const int BodyCount = 2;
+    glm::vec3 BodyPositions[BodyCount] = {
+        glm::vec3(0.0f, 0.0f, 0.0f),
+        glm::vec3(2.0f, 0.0f, 0.0f),
+    };
+
     mesh Sphere;
     MeshSphereCreate(&Sphere, 20, 20);
 
@@ -402,22 +408,28 @@ main(int argc, char *argv[])
                 glm::vec3(0.0f),
                 glm::vec3(0.0f, 1.0f, 0.0f));
 
-        glm::mat4 Transform = Perspective * View;
-        glm::mat4 AxesView = Transform;
+        glm::mat4 PVTransform = Perspective * View;
+        glm::mat4 AxesView = PVTransform;
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glEnableVertexAttribArray(0);
 
-        glUniformMatrix4fv(TransformLocation, 1, GL_FALSE, &Transform[0][0]);
         glBindBuffer(GL_ARRAY_BUFFER, SphereVertBuf);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-        glDrawElements(GL_TRIANGLES, Sphere.IndexCount, GL_UNSIGNED_SHORT, 0);
 
+        for (int i = 0; i < BodyCount; ++i) {
+            glm::mat4 MVPTransform = PVTransform * glm::translate(glm::mat4(), BodyPositions[i]);
+            glUniformMatrix4fv(TransformLocation, 1, GL_FALSE, &MVPTransform[0][0]);
+            glDrawElements(GL_TRIANGLES, Sphere.IndexCount, GL_UNSIGNED_SHORT, 0);
+        }
+
+        /*
         glUniformMatrix4fv(TransformLocation, 1, GL_FALSE, &AxesView[0][0]);
         glBindBuffer(GL_ARRAY_BUFFER, AxesVertBuf);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
         glDrawArrays(GL_LINES, 0, 6);
+        */
 
         glDisableVertexAttribArray(0);
 
