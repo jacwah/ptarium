@@ -312,9 +312,17 @@ main(int argc, char *argv[])
     };
 
     const int BodyCount = 2;
-    glm::vec3 BodyPositions[BodyCount] = {
+    glm::vec3 BodyPosition[BodyCount] = {
         glm::vec3(0.0f, 0.0f, 0.0f),
         glm::vec3(2.0f, 0.0f, 0.0f),
+    };
+    glm::vec3 BodyVelocity[BodyCount] = {
+        glm::vec3(0),
+        glm::vec3(0),
+    };
+    float BodyMass[BodyCount] = {
+        100000.0f,
+        100000.0f,
     };
 
     mesh Sphere;
@@ -357,6 +365,7 @@ main(int argc, char *argv[])
     Uint64 LastTime = SDL_GetPerformanceCounter();
     Uint64 LastPrint = LastTime;
     Uint64 PrintDist = PerformanceHz;
+    float FrameLength = 0.0f;
 
     bool PrintFrameTime = false;
     bool Running = true;
@@ -403,6 +412,24 @@ main(int argc, char *argv[])
             }
         }
 
+        for (int i = 0; i < BodyCount; ++i) {
+            for (int j = 0; j < i; ++j) {
+                float G = 6.674e-11;
+                glm::vec3 Delta = BodyPosition[j] - BodyPosition[i];
+                float Distance = glm::length(Delta);
+                glm::vec3 Normal = glm::normalize(Delta);
+                // TODO: Divide by zero/tiny?
+                float ForceWithoutMass = G / (Distance*Distance);
+                glm::vec3 DeltaVelocityWithoutMass = ForceWithoutMass*FrameLength*Normal;
+                BodyVelocity[i] += DeltaVelocityWithoutMass*BodyMass[j];
+                BodyVelocity[j] -= DeltaVelocityWithoutMass*BodyMass[i];
+            }
+        }
+
+        for (int i = 0; i < BodyCount; ++i) {
+            BodyPosition[i] += BodyVelocity[i];
+        }
+
         glm::mat4 View = glm::lookAt(
                 EyePos.Cartesian(),
                 glm::vec3(0.0f),
@@ -419,7 +446,7 @@ main(int argc, char *argv[])
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
         for (int i = 0; i < BodyCount; ++i) {
-            glm::mat4 MVPTransform = PVTransform * glm::translate(glm::mat4(), BodyPositions[i]);
+            glm::mat4 MVPTransform = PVTransform * glm::translate(glm::mat4(), BodyPosition[i]);
             glUniformMatrix4fv(TransformLocation, 1, GL_FALSE, &MVPTransform[0][0]);
             glDrawElements(GL_TRIANGLES, Sphere.IndexCount, GL_UNSIGNED_SHORT, 0);
         }
@@ -436,8 +463,9 @@ main(int argc, char *argv[])
         DEBUGERR();
 
         Uint64 CurrentTime = SDL_GetPerformanceCounter();
+        FrameLength = (CurrentTime - LastTime) / (float)PerformanceHz;
         if (PrintFrameTime && CurrentTime > LastPrint + PrintDist) {
-            float FrameMs = 1000.0f * (CurrentTime - LastTime) / PerformanceHz;
+            float FrameMs = 1000.0f * FrameLength;
             printf("%.2f\n", FrameMs);
             LastPrint = CurrentTime;
         }
