@@ -313,8 +313,8 @@ main(int argc, char *argv[])
 
     const int BodyCount = 2;
     glm::vec3 BodyPosition[BodyCount] = {
-        glm::vec3(0.0f, 0.0f, 0.0f),
-        glm::vec3(2.0f, 0.0f, 0.0f),
+        glm::vec3(-1.0f, 1.0f, 0.0f),
+        glm::vec3(1.0f, 0.0f, -1.0f),
     };
     glm::vec3 BodyVelocity[BodyCount] = {
         glm::vec3(0),
@@ -369,6 +369,9 @@ main(int argc, char *argv[])
 
     bool PrintFrameTime = false;
     bool Running = true;
+
+    int FocusedBody = 0;
+
     while (Running) {
         SDL_Event Event;
         while (SDL_PollEvent(&Event)) {
@@ -407,6 +410,12 @@ main(int argc, char *argv[])
                         case SDLK_t:
                             PrintFrameTime = !PrintFrameTime;
                             break;
+                        case SDLK_1:
+                            FocusedBody = 0;
+                            break;
+                        case SDLK_2:
+                            FocusedBody = 1;
+                            break;
                     }
                 }
             }
@@ -430,9 +439,11 @@ main(int argc, char *argv[])
             BodyPosition[i] += BodyVelocity[i];
         }
 
+        glm::vec3 FocusedEyePos = EyePos.Cartesian() + BodyPosition[FocusedBody];
+
         glm::mat4 View = glm::lookAt(
-                EyePos.Cartesian(),
-                glm::vec3(0.0f),
+                FocusedEyePos,
+                BodyPosition[FocusedBody],
                 glm::vec3(0.0f, 1.0f, 0.0f));
 
         glm::mat4 PVTransform = Perspective * View;
