@@ -250,6 +250,19 @@ struct sphere_pos {
     }
 };
 
+glm::vec3 SphericalToCartesian(glm::vec2 Spherical)
+{
+    float SinYaw = sinf(Spherical.x);
+    float CosYaw = cosf(Spherical.x);
+    float SinPitch = sinf(Spherical.y);
+    float CosPitch = cosf(Spherical.y);
+
+    return glm::vec3(
+            SinPitch * CosYaw,
+            CosPitch,
+            SinPitch * SinYaw);
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -313,7 +326,7 @@ main(int argc, char *argv[])
 
     const int BodyCount = 2;
     glm::vec3 BodyPosition[BodyCount] = {
-        glm::vec3(-1.0f, 1.0f, 0.0f),
+        glm::vec3(0.0f, 0.0f, 0.0f),
         glm::vec3(1.0f, 0.0f, -1.0f),
     };
     glm::vec3 BodyVelocity[BodyCount] = {
@@ -332,12 +345,13 @@ main(int argc, char *argv[])
     glGenVertexArrays(1, &VertexArray);
     glBindVertexArray(VertexArray);
 
-    GLuint VertexBuffers[3];
-    glGenBuffers(3, VertexBuffers);
+    GLuint VertexBuffers[4];
+    glGenBuffers(4, VertexBuffers);
 
     GLuint AxesVertBuf = VertexBuffers[0];
     GLuint SphereVertBuf = VertexBuffers[1];
     GLuint SphereIndBuf = VertexBuffers[2];
+    GLuint LineVertBuf = VertexBuffers[3];
 
     glBindBuffer(GL_ARRAY_BUFFER, AxesVertBuf);
     glBufferData(GL_ARRAY_BUFFER, sizeof(Axes), Axes, GL_STATIC_DRAW);
@@ -350,13 +364,38 @@ main(int argc, char *argv[])
     GLuint ShaderProgram = ShadersCompile();
     glUseProgram(ShaderProgram);
 
+    float AspectRatio = (float) DISPLAY_WIDTH / (float) DISPLAY_HEIGHT;
+    float FovY = glm::radians(45.0f);
+    float FovX = FovY * AspectRatio;
+
     glm::mat4 Perspective = glm::perspective(
-            glm::radians(45.0f),
-            (float) DISPLAY_WIDTH / (float) DISPLAY_HEIGHT,
+            FovY,
+            AspectRatio,
             0.1f,
             100.0f);
 
-    sphere_pos EyePos(4.0f, PI/2, 0.0f);
+    /*
+    glm::vec3 ScreenLeft = sphere_pos(1.0f, 0.0f, -FovX / 2.0f).Cartesian();
+    glm::vec3 ScreenRight = sphere_pos(1.0f, 0.0f, FovX / 2.0f).Cartesian();
+    glm::vec3 ScreenTop = sphere_pos(1.0f, FovY / 2.0f, 0.0f).Cartesian();
+    glm::vec3 ScreenBottom = sphere_pos(1.0f, -FovY / 2.0f, 0.0f).Cartesian();
+    */
+
+    glm::vec2 ScreenLeft(-FovX / 2.0f, 0.0f);
+    glm::vec2 ScreenRight(FovX / 2.0f, 0.0f);
+    glm::vec2 ScreenTop(0.0f, FovY / 2.0f);
+    glm::vec2 ScreenBottom(0.0f, -FovY / 2.0f);
+
+    glm::vec2 ScreenPoint(0.25f, 0.25f);
+    glm::vec2 ScreenPointDir =
+        ScreenPoint.x * ScreenRight +
+        (1 - ScreenPoint.x) * ScreenLeft +
+        ScreenPoint.y * ScreenTop +
+        (1 - ScreenPoint.y) * ScreenBottom;
+
+    //sphere_pos EyePos(4.0f, PI/2, 0.0f);
+    glm::vec2 EyeRotation(0.0f, PI / 2);
+    float EyeDistance = 4.0f;
 
     GLuint TransformLocation = glGetUniformLocation(ShaderProgram, "Transform");
     DEBUGERR();
@@ -374,6 +413,7 @@ main(int argc, char *argv[])
 
     while (Running) {
         SDL_Event Event;
+        float dAngle = glm::radians(5.0f);
         while (SDL_PollEvent(&Event)) {
             switch (Event.type) {
                 case SDL_QUIT:
@@ -386,18 +426,23 @@ main(int argc, char *argv[])
                             Running = false;
                             break;
                         case SDLK_UP:
-                            EyePos.dPitch(glm::radians(5.0f));
+                            //EyePos.dPitch(glm::radians(5.0f));
+                            EyeRotation.y += dAngle;
                             break;
                         case SDLK_RIGHT:
-                            EyePos.dYaw(glm::radians(5.0f));
+                            //EyePos.dYaw(glm::radians(5.0f));
+                            EyeRotation.x += dAngle;
                             break;
                         case SDLK_DOWN:
-                            EyePos.dPitch(glm::radians(-5.0f));
+                            //EyePos.dPitch(glm::radians(-5.0f));
+                            EyeRotation.y -= dAngle;
                             break;
                         case SDLK_LEFT:
-                            EyePos.dYaw(glm::radians(-5.0f));
+                            //EyePos.dYaw(glm::radians(-5.0f));
+                            EyeRotation.x -= dAngle;
                             break;
                         case SDLK_p: {
+                            /*
                             glm::vec3 Cart = EyePos.Cartesian();
                             printf("r=%f\tp=%f\ty=%f\n",
                                     EyePos.Radius,
@@ -405,6 +450,7 @@ main(int argc, char *argv[])
                                     EyePos.Yaw);
                             printf("x=%f\ty=%f\tz=%f\n",
                                     Cart.x, Cart.y, Cart.z);
+                            */
                             break;
                         }
                         case SDLK_t:
@@ -420,6 +466,16 @@ main(int argc, char *argv[])
                 }
             }
         }
+
+        int MouseX, MouseY;
+        SDL_GetMouseState(&MouseX, &MouseY);
+
+        ScreenPoint = glm::vec2((float) MouseX / (float) DISPLAY_WIDTH, (float) MouseY / (float) DISPLAY_HEIGHT);
+        ScreenPointDir =
+            ScreenPoint.x * ScreenRight +
+            (1 - ScreenPoint.x) * ScreenLeft +
+            ScreenPoint.y * ScreenTop +
+            (1 - ScreenPoint.y) * ScreenBottom;
 
         for (int i = 0; i < BodyCount; ++i) {
             for (int j = 0; j < i; ++j) {
@@ -439,7 +495,7 @@ main(int argc, char *argv[])
             BodyPosition[i] += BodyVelocity[i];
         }
 
-        glm::vec3 FocusedEyePos = EyePos.Cartesian() + BodyPosition[FocusedBody];
+        glm::vec3 FocusedEyePos = EyeDistance * SphericalToCartesian(EyeRotation) + BodyPosition[FocusedBody];
 
         glm::mat4 View = glm::lookAt(
                 FocusedEyePos,
@@ -459,8 +515,43 @@ main(int argc, char *argv[])
         for (int i = 0; i < BodyCount; ++i) {
             glm::mat4 MVPTransform = PVTransform * glm::translate(glm::mat4(), BodyPosition[i]);
             glUniformMatrix4fv(TransformLocation, 1, GL_FALSE, &MVPTransform[0][0]);
-            glDrawElements(GL_TRIANGLES, Sphere.IndexCount, GL_UNSIGNED_SHORT, 0);
+            //glDrawElements(GL_TRIANGLES, Sphere.IndexCount, GL_UNSIGNED_SHORT, 0);
         }
+
+        glm::vec2 UnscreenedDir = ScreenPointDir + EyeRotation;
+        //printf("SPD: %f, %f\n", glm::degrees(ScreenPointDir.x), glm::degrees(ScreenPointDir.y));
+        //printf("USD: %f, %f\n", glm::degrees(UnscreenedDir.x), glm::degrees(UnscreenedDir.y));
+        glm::vec3 UnscreenedCart = FocusedEyePos + 1.0f * SphericalToCartesian(UnscreenedDir);
+        //glm::vec3 UnscreenedCart(1.0f);
+        //printf("USC: %f, %f, %f\n", UnscreenedCart.x, UnscreenedCart.y, UnscreenedCart.z);
+        glm::vec2 EyeOffset = glm::vec2(glm::radians(5.0f), glm::radians(5.0f));
+        glm::vec3 OffsetEyePos = EyeDistance * SphericalToCartesian(EyeRotation + EyeOffset) + BodyPosition[FocusedBody];
+        OffsetEyePos *= -1.0f;
+        float Line[3*2];
+        Line[0] = OffsetEyePos.x;
+        Line[1] = OffsetEyePos.y;
+        Line[2] = OffsetEyePos.z;
+        Line[3] = UnscreenedCart.x;
+        Line[4] = UnscreenedCart.y;
+        Line[5] = UnscreenedCart.z;
+
+#if 0
+        Line[0] += 1.0f;
+        Line[1] += 1.0f;
+        Line[2] += 1.0f;
+#endif
+
+#if 0
+        Line[3] = 0.0f;
+        Line[4] = 0.0f;
+        Line[5] = 0.0f;
+#endif
+
+        glUniformMatrix4fv(TransformLocation, 1, GL_FALSE, &PVTransform[0][0]);
+        glBindBuffer(GL_ARRAY_BUFFER, LineVertBuf);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(Line), Line, GL_STREAM_DRAW);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+        glDrawArrays(GL_LINES, 0, 2);
 
         /*
         glUniformMatrix4fv(TransformLocation, 1, GL_FALSE, &AxesView[0][0]);
@@ -479,6 +570,8 @@ main(int argc, char *argv[])
             float FrameMs = 1000.0f * FrameLength;
             printf("%.2f\n", FrameMs);
             LastPrint = CurrentTime;
+            //printf("%f, %f, %f\t%f, %f, %f\n", Line[0], Line[1], Line[2], Line[3], Line[4], Line[5]);
+            printf("%f, %f\n", ScreenPoint.x, ScreenPoint.y);
         }
         LastTime = CurrentTime;
 
