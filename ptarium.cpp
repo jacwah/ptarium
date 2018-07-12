@@ -264,6 +264,30 @@ glm::vec3 SphericalToCartesian(glm::vec2 Spherical)
             SinPitch * SinYaw);
 }
 
+/* 1 in front, 0 none, -1 behind. */
+int LineSphereIntersect(
+        glm::vec3 SphereCenter,
+        float SphereRadius,
+        glm::vec3 LineOrigin,
+        glm::vec3 LineDirection) // Normalized
+{
+    glm::vec3 SphereToLine = LineOrigin - SphereCenter;
+    float LineProject = glm::dot(LineDirection, SphereToLine);
+    float PointDiffSquared = LineProject*LineProject - glm::dot(SphereToLine, SphereToLine) + SphereRadius*SphereRadius;
+
+    if (PointDiffSquared < 0.0f) {
+        return 0;
+    } else {
+        float GreatestDistance = -LineProject + sqrtf(PointDiffSquared);
+
+        if (GreatestDistance < 0.0f) {
+            return -1;
+        } else {
+            return 1;
+        }
+    }
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -328,7 +352,7 @@ main(int argc, char *argv[])
     const int BodyCount = 2;
     glm::vec3 BodyPosition[BodyCount] = {
         glm::vec3(0.0f, 0.0f, 0.0f),
-        glm::vec3(1.0f, 0.0f, -1.0f),
+        glm::vec3(5.0f, 0.0f, -1.0f),
     };
     glm::vec3 BodyVelocity[BodyCount] = {
         glm::vec3(0),
@@ -415,11 +439,14 @@ main(int argc, char *argv[])
     while (Running) {
         SDL_Event Event;
         float dAngle = glm::radians(5.0f);
+        bool PrintClickedBody = false;
         while (SDL_PollEvent(&Event)) {
             switch (Event.type) {
                 case SDL_QUIT:
                     Running = false;
                     break;
+                case SDL_MOUSEBUTTONDOWN:
+                    PrintClickedBody = true;
                 case SDL_KEYDOWN:
                     {
                     switch (Event.key.keysym.sym) {
@@ -517,25 +544,21 @@ main(int argc, char *argv[])
         for (int i = 0; i < BodyCount; ++i) {
             glm::mat4 MVPTransform = PVTransform * glm::translate(glm::mat4(), BodyPosition[i]);
             glUniformMatrix4fv(TransformLocation, 1, GL_FALSE, &MVPTransform[0][0]);
-            //glDrawElements(GL_TRIANGLES, Sphere.IndexCount, GL_UNSIGNED_SHORT, 0);
+            glDrawElements(GL_TRIANGLES, Sphere.IndexCount, GL_UNSIGNED_SHORT, 0);
         }
 
-#if 0
-        glm::vec2 UnscreenedDir = ScreenPointDir + EyeRotation;
-        //printf("SPD: %f, %f\n", glm::degrees(ScreenPointDir.x), glm::degrees(ScreenPointDir.y));
-        //printf("USD: %f, %f\n", glm::degrees(UnscreenedDir.x), glm::degrees(UnscreenedDir.y));
-        glm::vec3 UnscreenedCart = FocusedEyePos + 1.0f * SphericalToCartesian(UnscreenedDir);
-        //glm::vec3 UnscreenedCart(1.0f);
-        //printf("USC: %f, %f, %f\n", UnscreenedCart.x, UnscreenedCart.y, UnscreenedCart.z);
-        glm::vec2 EyeOffset = glm::vec2(glm::radians(5.0f), glm::radians(5.0f));
-        glm::vec3 OffsetEyePos = EyeDistance * SphericalToCartesian(EyeRotation + EyeOffset) + BodyPosition[FocusedBody];
-        OffsetEyePos *= -1.0f;
-#endif
-
-        glm::vec3 Look = -SphericalToCartesian(EyeRotation);
-        glm::vec3 Side = glm::cross(Look, Up);
-        glm::vec3 RealUp = glm::cross(Side, Look);
+        glm::vec3 Look = -SphericalToCartesian(EyeRotation); // Body - Eye
+        glm::vec3 Side = glm::normalize(glm::cross(Look, Up));
+        glm::vec3 RealUp = glm::normalize(glm::cross(Side, Look));
         glm::vec3 PointingDir = glm::rotate(glm::rotate(Look, ScreenPointDir.x, RealUp), ScreenPointDir.y, Side);
+
+        if (PrintClickedBody) {
+            for (int i = 0; i < BodyCount; ++i) {
+                // TODO: Closest
+                int Result = LineSphereIntersect(BodyPosition[i], 1.0f, FocusedEyePos, PointingDir);
+                printf("%d: %d\n", i, Result);
+            }
+        }
 
         glm::vec3 Line0 = 10.0f * Look + FocusedEyePos;
         glm::vec3 Line1 = 10.0f * PointingDir + FocusedEyePos;
@@ -548,23 +571,13 @@ main(int argc, char *argv[])
         Line[4] = Line1.y;
         Line[5] = Line1.z;
 
-#if 0
-        Line[0] += 1.0f;
-        Line[1] += 1.0f;
-        Line[2] += 1.0f;
-#endif
-
-#if 0
-        Line[3] = 0.0f;
-        Line[4] = 0.0f;
-        Line[5] = 0.0f;
-#endif
-
+        glDepthFunc(GL_ALWAYS);
         glUniformMatrix4fv(TransformLocation, 1, GL_FALSE, &PVTransform[0][0]);
         glBindBuffer(GL_ARRAY_BUFFER, LineVertBuf);
         glBufferData(GL_ARRAY_BUFFER, sizeof(Line), Line, GL_STREAM_DRAW);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
         glDrawArrays(GL_LINES, 0, 2);
+        glDepthFunc(GL_LESS);
 
         /*
         glUniformMatrix4fv(TransformLocation, 1, GL_FALSE, &AxesView[0][0]);
@@ -583,7 +596,7 @@ main(int argc, char *argv[])
             float FrameMs = 1000.0f * FrameLength;
             printf("%.2f\n", FrameMs);
             LastPrint = CurrentTime;
-            printf("%f, %f, %f\t%f, %f, %f\n", Line[0], Line[1], Line[2], Line[3], Line[4], Line[5]);
+            printf("%f, %f, %f\t\t%f, %f, %f\n", Line[0], Line[1], Line[2], Line[3], Line[4], Line[5]);
             printf("%f, %f\n", ScreenPoint.x, ScreenPoint.y);
         }
         LastTime = CurrentTime;
