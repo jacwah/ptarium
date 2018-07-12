@@ -4,6 +4,7 @@
 #include <SDL2/SDL_timer.h>
 #include <glm/mat4x4.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/rotate_vector.hpp>
 #include <math.h>
 #include <stdio.h>
 #include "shaders.inc"
@@ -381,10 +382,10 @@ main(int argc, char *argv[])
     glm::vec3 ScreenBottom = sphere_pos(1.0f, -FovY / 2.0f, 0.0f).Cartesian();
     */
 
-    glm::vec2 ScreenLeft(-FovX / 2.0f, 0.0f);
-    glm::vec2 ScreenRight(FovX / 2.0f, 0.0f);
-    glm::vec2 ScreenTop(0.0f, FovY / 2.0f);
-    glm::vec2 ScreenBottom(0.0f, -FovY / 2.0f);
+    glm::vec2 ScreenLeft(FovX / 2.0f, 0.0f);
+    glm::vec2 ScreenRight(-FovX / 2.0f, 0.0f);
+    glm::vec2 ScreenTop(0.0f, -FovY / 2.0f);
+    glm::vec2 ScreenBottom(0.0f, FovY / 2.0f);
 
     glm::vec2 ScreenPoint(0.25f, 0.25f);
     glm::vec2 ScreenPointDir =
@@ -497,10 +498,11 @@ main(int argc, char *argv[])
 
         glm::vec3 FocusedEyePos = EyeDistance * SphericalToCartesian(EyeRotation) + BodyPosition[FocusedBody];
 
+        glm::vec3 Up(0.0f, 1.0f, 0.0f);
         glm::mat4 View = glm::lookAt(
                 FocusedEyePos,
                 BodyPosition[FocusedBody],
-                glm::vec3(0.0f, 1.0f, 0.0f));
+                Up);
 
         glm::mat4 PVTransform = Perspective * View;
         glm::mat4 AxesView = PVTransform;
@@ -518,6 +520,7 @@ main(int argc, char *argv[])
             //glDrawElements(GL_TRIANGLES, Sphere.IndexCount, GL_UNSIGNED_SHORT, 0);
         }
 
+#if 0
         glm::vec2 UnscreenedDir = ScreenPointDir + EyeRotation;
         //printf("SPD: %f, %f\n", glm::degrees(ScreenPointDir.x), glm::degrees(ScreenPointDir.y));
         //printf("USD: %f, %f\n", glm::degrees(UnscreenedDir.x), glm::degrees(UnscreenedDir.y));
@@ -527,13 +530,23 @@ main(int argc, char *argv[])
         glm::vec2 EyeOffset = glm::vec2(glm::radians(5.0f), glm::radians(5.0f));
         glm::vec3 OffsetEyePos = EyeDistance * SphericalToCartesian(EyeRotation + EyeOffset) + BodyPosition[FocusedBody];
         OffsetEyePos *= -1.0f;
+#endif
+
+        glm::vec3 Look = -SphericalToCartesian(EyeRotation);
+        glm::vec3 Side = glm::cross(Look, Up);
+        glm::vec3 RealUp = glm::cross(Side, Look);
+        glm::vec3 PointingDir = glm::rotate(glm::rotate(Look, ScreenPointDir.x, RealUp), ScreenPointDir.y, Side);
+
+        glm::vec3 Line0 = 10.0f * Look + FocusedEyePos;
+        glm::vec3 Line1 = 10.0f * PointingDir + FocusedEyePos;
+
         float Line[3*2];
-        Line[0] = OffsetEyePos.x;
-        Line[1] = OffsetEyePos.y;
-        Line[2] = OffsetEyePos.z;
-        Line[3] = UnscreenedCart.x;
-        Line[4] = UnscreenedCart.y;
-        Line[5] = UnscreenedCart.z;
+        Line[0] = Line0.x;
+        Line[1] = Line0.y;
+        Line[2] = Line0.z;
+        Line[3] = Line1.x;
+        Line[4] = Line1.y;
+        Line[5] = Line1.z;
 
 #if 0
         Line[0] += 1.0f;
@@ -570,7 +583,7 @@ main(int argc, char *argv[])
             float FrameMs = 1000.0f * FrameLength;
             printf("%.2f\n", FrameMs);
             LastPrint = CurrentTime;
-            //printf("%f, %f, %f\t%f, %f, %f\n", Line[0], Line[1], Line[2], Line[3], Line[4], Line[5]);
+            printf("%f, %f, %f\t%f, %f, %f\n", Line[0], Line[1], Line[2], Line[3], Line[4], Line[5]);
             printf("%f, %f\n", ScreenPoint.x, ScreenPoint.y);
         }
         LastTime = CurrentTime;
