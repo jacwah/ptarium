@@ -3,6 +3,7 @@
 #include <SDL2/SDL_opengl.h>
 #include <SDL2/SDL_timer.h>
 #include <glm/mat4x4.hpp>
+#include <glm/trigonometric.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/rotate_vector.hpp>
 #include <math.h>
@@ -390,8 +391,8 @@ main(int argc, char *argv[])
     glUseProgram(ShaderProgram);
 
     float AspectRatio = (float) DISPLAY_WIDTH / (float) DISPLAY_HEIGHT;
-    float FovY = glm::radians(45.0f);
-    float FovX = FovY * AspectRatio;
+    float FovY = glm::radians(80.0f);
+    float FovX = 2.0f * atanf(tanf(FovY / 2.0f) * AspectRatio);
 
     glm::mat4 Perspective = glm::perspective(
             FovY,
@@ -505,6 +506,11 @@ main(int argc, char *argv[])
             ScreenPoint.y * ScreenTop +
             (1 - ScreenPoint.y) * ScreenBottom;
 
+        ScreenPointDir = (ScreenPoint - glm::vec2(0.5f, 0.5f)) * glm::vec2(-FovX, -FovY);
+
+        glm::vec2 DownLeft = glm::tan(glm::vec2(FovX / 2.0f, FovY / 2.0f));
+        ScreenPointDir = -glm::atan(2.0f * (ScreenPoint - glm::vec2(0.5f)) * DownLeft);
+
         for (int i = 0; i < BodyCount; ++i) {
             for (int j = 0; j < i; ++j) {
                 float G = 6.674e-11;
@@ -548,9 +554,10 @@ main(int argc, char *argv[])
         }
 
         glm::vec3 Look = -SphericalToCartesian(EyeRotation); // Body - Eye
-        glm::vec3 Side = glm::normalize(glm::cross(Look, Up));
-        glm::vec3 RealUp = glm::normalize(glm::cross(Side, Look));
-        glm::vec3 PointingDir = glm::rotate(glm::rotate(Look, ScreenPointDir.x, RealUp), ScreenPointDir.y, Side);
+        glm::vec3 LookSide = glm::normalize(glm::cross(Look, Up));
+        glm::vec3 LookUp = glm::normalize(glm::cross(LookSide, Look));
+        //glm::vec3 PointingDir = glm::rotate(glm::rotate(Look, ScreenPointDir.x, LookUp), ScreenPointDir.y, LookSide);
+        glm::vec3 PointingDir = glm::rotate(glm::rotate(Look, ScreenPointDir.y, LookSide), ScreenPointDir.x, LookUp);
 
         if (PrintClickedBody) {
             for (int i = 0; i < BodyCount; ++i) {
@@ -560,8 +567,8 @@ main(int argc, char *argv[])
             }
         }
 
-        glm::vec3 Line0 = 10.0f * Look + FocusedEyePos;
-        glm::vec3 Line1 = 10.0f * PointingDir + FocusedEyePos;
+        glm::vec3 Line0 = Look + FocusedEyePos;
+        glm::vec3 Line1 = PointingDir + FocusedEyePos;
 
         float Line[3*2];
         Line[0] = Line0.x;
