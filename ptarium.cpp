@@ -392,7 +392,9 @@ main(int argc, char *argv[])
 
     float AspectRatio = (float) DISPLAY_WIDTH / (float) DISPLAY_HEIGHT;
     float FovY = glm::radians(80.0f);
-    float FovX = 2.0f * atanf(tanf(FovY / 2.0f) * AspectRatio);
+
+    float TanHalfFov = tanf(FovY / 2.0f);
+    glm::vec2 HalfScreenInCameraSpace(TanHalfFov * AspectRatio, TanHalfFov);
 
     glm::mat4 Perspective = glm::perspective(
             FovY,
@@ -464,8 +466,6 @@ main(int argc, char *argv[])
         SDL_GetMouseState(&MouseX, &MouseY);
 
         glm::vec2 ScreenPoint((float) MouseX / (float) DISPLAY_WIDTH, (float) MouseY / (float) DISPLAY_HEIGHT);
-        glm::vec2 DownLeft = glm::tan(glm::vec2(FovX / 2.0f, FovY / 2.0f));
-        glm::vec2 ScreenPointDir = -glm::atan(2.0f * (ScreenPoint - glm::vec2(0.5f)) * DownLeft);
 
         for (int i = 0; i < BodyCount; ++i) {
             for (int j = 0; j < i; ++j) {
@@ -512,23 +512,22 @@ main(int argc, char *argv[])
 
         glm::vec3 Look = -SphericalToCartesian(EyeRotation); // Body - Eye
 
-        // Screen space
-        glm::vec2 Sp(2.0f * ScreenPoint.x - 1.0f, 1.0f - 2.0f * ScreenPoint.y);
-        // Camera space
-        glm::vec4 Cp(Sp.x * tanf(FovY / 2.0f) * AspectRatio, Sp.y * tanf(FovY / 2.0f), -1.0f, 0.0f);
-        // World space
-        glm::vec3 PointingDir = glm::normalize(glm::inverse(View) * Cp);
+        glm::vec4 CameraPoint(
+                HalfScreenInCameraSpace.x * (2.0f * ScreenPoint.x - 1.0f),
+                HalfScreenInCameraSpace.y * (1.0f - 2.0f * ScreenPoint.y),
+                -1.0f, 0.0f);
+        glm::vec3 WorldPointingDir = glm::normalize(glm::inverse(View) * CameraPoint);
 
         if (PrintClickedBody) {
             for (int i = 0; i < BodyCount; ++i) {
                 // TODO: Closest
-                int Result = LineSphereIntersect(BodyPosition[i], 1.0f, FocusedEyePos, PointingDir);
+                int Result = LineSphereIntersect(BodyPosition[i], 1.0f, FocusedEyePos, WorldPointingDir);
                 printf("%d: %d\n", i, Result);
             }
         }
 
         glm::vec3 Line0 = FocusedEyePos + Look;
-        glm::vec3 Line1 = FocusedEyePos + PointingDir;
+        glm::vec3 Line1 = FocusedEyePos + WorldPointingDir;
 
         float Line[3*2];
         Line[0] = Line0.x;
