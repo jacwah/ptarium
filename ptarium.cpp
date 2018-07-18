@@ -4,6 +4,7 @@
 #include <SDL2/SDL_timer.h>
 #include <glm/mat4x4.hpp>
 #include <glm/trigonometric.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/rotate_vector.hpp>
 #include <math.h>
@@ -538,6 +539,7 @@ main(int argc, char *argv[])
                 Up);
 
         glm::mat4 PVTransform = Perspective * View;
+        glm::mat4 PVInverse = glm::inverse(PVTransform);
         glm::mat4 AxesView = PVTransform;
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -554,10 +556,46 @@ main(int argc, char *argv[])
         }
 
         glm::vec3 Look = -SphericalToCartesian(EyeRotation); // Body - Eye
-        glm::vec3 LookSide = glm::normalize(glm::cross(Look, Up));
-        glm::vec3 LookUp = glm::normalize(glm::cross(LookSide, Look));
-        //glm::vec3 PointingDir = glm::rotate(glm::rotate(Look, ScreenPointDir.x, LookUp), ScreenPointDir.y, LookSide);
-        glm::vec3 PointingDir = glm::rotate(glm::rotate(Look, ScreenPointDir.y, LookSide), ScreenPointDir.x, LookUp);
+        glm::vec3 LookRight = glm::normalize(glm::cross(Look, Up));
+        glm::vec3 LookUp = glm::normalize(glm::cross(LookRight, Look));
+#if 0
+        //glm::vec3 PointingDir = glm::rotate(glm::rotate(Look, ScreenPointDir.y, LookRight), ScreenPointDir.x, LookUp);
+        glm::vec3 PointingDir = glm::rotate(glm::rotate(Look, ScreenPointDir.x, LookUp), ScreenPointDir.y, LookRight);
+#endif
+
+#if 0
+        glm::vec3 Pointing1 = glm::rotate(Look, ScreenPointDir.x, LookUp);
+        glm::vec3 LookRight1 = glm::normalize(glm::cross(Pointing1, LookUp));
+        glm::vec3 PointingDir = glm::rotate(Pointing1, ScreenPointDir.y, LookRight1);
+#endif
+
+#if 0
+        glm::vec4 CameraPoint(2.0f * ScreenPoint.x - 1.0f, -2.0f * ScreenPoint.y + 1.0f, -1.0f, 1.0f);
+        glm::vec3 WorldPoint = glm::inverse(View) * CameraPoint;
+        glm::vec3 PointingDir = glm::normalize(WorldPoint);
+#endif
+
+#if 1
+        // Works!!!
+        // Screen space
+        glm::vec2 Sp(2.0f * ScreenPoint.x - 1.0f, 1.0f - 2.0f * ScreenPoint.y);
+        // Camera space
+        glm::vec4 Cp(Sp.x * tanf(FovY / 2.0f) * AspectRatio, Sp.y * tanf(FovY / 2.0f), -1.0f, 0.0f);
+        // World space
+        glm::vec3 PointingDir = glm::normalize(glm::inverse(View) * Cp);
+#endif
+
+#if 0
+        glm::vec3 PointingDir = -SphericalToCartesian(EyeRotation + glm::vec2(-1.0f, 1.0f) * ScreenPointDir);
+#endif
+
+#if 0
+        glm::quat Qx(ScreenPointDir.x, LookUp);
+        glm::quat Qy(ScreenPointDir.y, LookRight);
+        glm::quat Qs = glm::slerp(Qx, Qy, 0.5f);
+        glm::quat Ql = glm::lerp(Qx, Qy, 0.5f);
+        glm::vec3 PointingDir = glm::rotate(Look, glm::angle(Qx), glm::axis(Qy));
+#endif
 
         if (PrintClickedBody) {
             for (int i = 0; i < BodyCount; ++i) {
