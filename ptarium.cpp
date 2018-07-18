@@ -4,7 +4,6 @@
 #include <SDL2/SDL_timer.h>
 #include <glm/mat4x4.hpp>
 #include <glm/trigonometric.hpp>
-#include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/rotate_vector.hpp>
 #include <math.h>
@@ -401,26 +400,6 @@ main(int argc, char *argv[])
             0.1f,
             100.0f);
 
-    /*
-    glm::vec3 ScreenLeft = sphere_pos(1.0f, 0.0f, -FovX / 2.0f).Cartesian();
-    glm::vec3 ScreenRight = sphere_pos(1.0f, 0.0f, FovX / 2.0f).Cartesian();
-    glm::vec3 ScreenTop = sphere_pos(1.0f, FovY / 2.0f, 0.0f).Cartesian();
-    glm::vec3 ScreenBottom = sphere_pos(1.0f, -FovY / 2.0f, 0.0f).Cartesian();
-    */
-
-    glm::vec2 ScreenLeft(FovX / 2.0f, 0.0f);
-    glm::vec2 ScreenRight(-FovX / 2.0f, 0.0f);
-    glm::vec2 ScreenTop(0.0f, -FovY / 2.0f);
-    glm::vec2 ScreenBottom(0.0f, FovY / 2.0f);
-
-    glm::vec2 ScreenPoint(0.25f, 0.25f);
-    glm::vec2 ScreenPointDir =
-        ScreenPoint.x * ScreenRight +
-        (1 - ScreenPoint.x) * ScreenLeft +
-        ScreenPoint.y * ScreenTop +
-        (1 - ScreenPoint.y) * ScreenBottom;
-
-    //sphere_pos EyePos(4.0f, PI/2, 0.0f);
     glm::vec2 EyeRotation(0.0f, PI / 2);
     float EyeDistance = 4.0f;
 
@@ -456,33 +435,17 @@ main(int argc, char *argv[])
                             Running = false;
                             break;
                         case SDLK_UP:
-                            //EyePos.dPitch(glm::radians(5.0f));
                             EyeRotation.y += dAngle;
                             break;
                         case SDLK_RIGHT:
-                            //EyePos.dYaw(glm::radians(5.0f));
                             EyeRotation.x += dAngle;
                             break;
                         case SDLK_DOWN:
-                            //EyePos.dPitch(glm::radians(-5.0f));
                             EyeRotation.y -= dAngle;
                             break;
                         case SDLK_LEFT:
-                            //EyePos.dYaw(glm::radians(-5.0f));
                             EyeRotation.x -= dAngle;
                             break;
-                        case SDLK_p: {
-                            /*
-                            glm::vec3 Cart = EyePos.Cartesian();
-                            printf("r=%f\tp=%f\ty=%f\n",
-                                    EyePos.Radius,
-                                    EyePos.Pitch,
-                                    EyePos.Yaw);
-                            printf("x=%f\ty=%f\tz=%f\n",
-                                    Cart.x, Cart.y, Cart.z);
-                            */
-                            break;
-                        }
                         case SDLK_t:
                             PrintFrameTime = !PrintFrameTime;
                             break;
@@ -500,17 +463,9 @@ main(int argc, char *argv[])
         int MouseX, MouseY;
         SDL_GetMouseState(&MouseX, &MouseY);
 
-        ScreenPoint = glm::vec2((float) MouseX / (float) DISPLAY_WIDTH, (float) MouseY / (float) DISPLAY_HEIGHT);
-        ScreenPointDir =
-            ScreenPoint.x * ScreenRight +
-            (1 - ScreenPoint.x) * ScreenLeft +
-            ScreenPoint.y * ScreenTop +
-            (1 - ScreenPoint.y) * ScreenBottom;
-
-        ScreenPointDir = (ScreenPoint - glm::vec2(0.5f, 0.5f)) * glm::vec2(-FovX, -FovY);
-
+        glm::vec2 ScreenPoint((float) MouseX / (float) DISPLAY_WIDTH, (float) MouseY / (float) DISPLAY_HEIGHT);
         glm::vec2 DownLeft = glm::tan(glm::vec2(FovX / 2.0f, FovY / 2.0f));
-        ScreenPointDir = -glm::atan(2.0f * (ScreenPoint - glm::vec2(0.5f)) * DownLeft);
+        glm::vec2 ScreenPointDir = -glm::atan(2.0f * (ScreenPoint - glm::vec2(0.5f)) * DownLeft);
 
         for (int i = 0; i < BodyCount; ++i) {
             for (int j = 0; j < i; ++j) {
@@ -556,46 +511,13 @@ main(int argc, char *argv[])
         }
 
         glm::vec3 Look = -SphericalToCartesian(EyeRotation); // Body - Eye
-        glm::vec3 LookRight = glm::normalize(glm::cross(Look, Up));
-        glm::vec3 LookUp = glm::normalize(glm::cross(LookRight, Look));
-#if 0
-        //glm::vec3 PointingDir = glm::rotate(glm::rotate(Look, ScreenPointDir.y, LookRight), ScreenPointDir.x, LookUp);
-        glm::vec3 PointingDir = glm::rotate(glm::rotate(Look, ScreenPointDir.x, LookUp), ScreenPointDir.y, LookRight);
-#endif
 
-#if 0
-        glm::vec3 Pointing1 = glm::rotate(Look, ScreenPointDir.x, LookUp);
-        glm::vec3 LookRight1 = glm::normalize(glm::cross(Pointing1, LookUp));
-        glm::vec3 PointingDir = glm::rotate(Pointing1, ScreenPointDir.y, LookRight1);
-#endif
-
-#if 0
-        glm::vec4 CameraPoint(2.0f * ScreenPoint.x - 1.0f, -2.0f * ScreenPoint.y + 1.0f, -1.0f, 1.0f);
-        glm::vec3 WorldPoint = glm::inverse(View) * CameraPoint;
-        glm::vec3 PointingDir = glm::normalize(WorldPoint);
-#endif
-
-#if 1
-        // Works!!!
         // Screen space
         glm::vec2 Sp(2.0f * ScreenPoint.x - 1.0f, 1.0f - 2.0f * ScreenPoint.y);
         // Camera space
         glm::vec4 Cp(Sp.x * tanf(FovY / 2.0f) * AspectRatio, Sp.y * tanf(FovY / 2.0f), -1.0f, 0.0f);
         // World space
         glm::vec3 PointingDir = glm::normalize(glm::inverse(View) * Cp);
-#endif
-
-#if 0
-        glm::vec3 PointingDir = -SphericalToCartesian(EyeRotation + glm::vec2(-1.0f, 1.0f) * ScreenPointDir);
-#endif
-
-#if 0
-        glm::quat Qx(ScreenPointDir.x, LookUp);
-        glm::quat Qy(ScreenPointDir.y, LookRight);
-        glm::quat Qs = glm::slerp(Qx, Qy, 0.5f);
-        glm::quat Ql = glm::lerp(Qx, Qy, 0.5f);
-        glm::vec3 PointingDir = glm::rotate(Look, glm::angle(Qx), glm::axis(Qy));
-#endif
 
         if (PrintClickedBody) {
             for (int i = 0; i < BodyCount; ++i) {
@@ -605,8 +527,8 @@ main(int argc, char *argv[])
             }
         }
 
-        glm::vec3 Line0 = Look + FocusedEyePos;
-        glm::vec3 Line1 = PointingDir + FocusedEyePos;
+        glm::vec3 Line0 = FocusedEyePos + Look;
+        glm::vec3 Line1 = FocusedEyePos + PointingDir;
 
         float Line[3*2];
         Line[0] = Line0.x;
@@ -641,8 +563,6 @@ main(int argc, char *argv[])
             float FrameMs = 1000.0f * FrameLength;
             printf("%.2f\n", FrameMs);
             LastPrint = CurrentTime;
-            printf("%f, %f, %f\t\t%f, %f, %f\n", Line[0], Line[1], Line[2], Line[3], Line[4], Line[5]);
-            printf("%f, %f\n", ScreenPoint.x, ScreenPoint.y);
         }
         LastTime = CurrentTime;
 
