@@ -1,3 +1,7 @@
+#include "camera.h"
+#include "maths.h"
+#include "shaders.inc"
+
 #include <GL/glew.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
@@ -8,7 +12,6 @@
 #include <glm/gtx/rotate_vector.hpp>
 #include <math.h>
 #include <stdio.h>
-#include "shaders.inc"
 
 #define DISPLAY_WIDTH 960
 #define DISPLAY_HEIGHT 540
@@ -252,43 +255,6 @@ struct sphere_pos {
     }
 };
 
-glm::vec3 SphericalToCartesian(glm::vec2 Spherical)
-{
-    float SinYaw = sinf(Spherical.x);
-    float CosYaw = cosf(Spherical.x);
-    float SinPitch = sinf(Spherical.y);
-    float CosPitch = cosf(Spherical.y);
-
-    return glm::vec3(
-            SinPitch * CosYaw,
-            CosPitch,
-            SinPitch * SinYaw);
-}
-
-/* 1 in front, 0 none, -1 behind. */
-int LineSphereIntersect(
-        glm::vec3 SphereCenter,
-        float SphereRadius,
-        glm::vec3 LineOrigin,
-        glm::vec3 LineDirection) // Normalized
-{
-    glm::vec3 SphereToLine = LineOrigin - SphereCenter;
-    float LineProject = glm::dot(LineDirection, SphereToLine);
-    float PointDiffSquared = LineProject*LineProject - glm::dot(SphereToLine, SphereToLine) + SphereRadius*SphereRadius;
-
-    if (PointDiffSquared < 0.0f) {
-        return 0;
-    } else {
-        float GreatestDistance = -LineProject + sqrtf(PointDiffSquared);
-
-        if (GreatestDistance < 0.0f) {
-            return -1;
-        } else {
-            return 1;
-        }
-    }
-}
-
 int
 main(int argc, char *argv[])
 {
@@ -390,20 +356,12 @@ main(int argc, char *argv[])
     GLuint ShaderProgram = ShadersCompile();
     glUseProgram(ShaderProgram);
 
-    float AspectRatio = (float) DISPLAY_WIDTH / (float) DISPLAY_HEIGHT;
-    float FovY = glm::radians(80.0f);
+    camera_params CameraParams;
+    CameraParams.AspectRatio = (float) DISPLAY_WIDTH / (float) DISPLAY_HEIGHT;
+    CameraParams.FovY = glm::radians(80.0f);
 
-    float TanHalfFov = tanf(FovY / 2.0f);
-    glm::vec2 HalfScreenInCameraSpace(TanHalfFov * AspectRatio, TanHalfFov);
-
-    glm::mat4 Perspective = glm::perspective(
-            FovY,
-            AspectRatio,
-            0.1f,
-            100.0f);
-
-    glm::vec2 EyeRotation(0.0f, PI / 2);
-    float EyeDistance = 4.0f;
+    CameraParams.Orientation = {0.0f, PI / 2};
+    CameraParams.Distance = 4.0f;
 
     GLuint TransformLocation = glGetUniformLocation(ShaderProgram, "Transform");
     DEBUGERR();
@@ -437,16 +395,16 @@ main(int argc, char *argv[])
                             Running = false;
                             break;
                         case SDLK_UP:
-                            EyeRotation.y += dAngle;
+                            CameraParams.Orientation.y += dAngle;
                             break;
                         case SDLK_RIGHT:
-                            EyeRotation.x += dAngle;
+                            CameraParams.Orientation.x += dAngle;
                             break;
                         case SDLK_DOWN:
-                            EyeRotation.y -= dAngle;
+                            CameraParams.Orientation.y -= dAngle;
                             break;
                         case SDLK_LEFT:
-                            EyeRotation.x -= dAngle;
+                            CameraParams.Orientation.x -= dAngle;
                             break;
                         case SDLK_t:
                             PrintFrameTime = !PrintFrameTime;
@@ -465,7 +423,9 @@ main(int argc, char *argv[])
         int MouseX, MouseY;
         SDL_GetMouseState(&MouseX, &MouseY);
 
-        glm::vec2 ScreenPoint((float) MouseX / (float) DISPLAY_WIDTH, (float) MouseY / (float) DISPLAY_HEIGHT);
+        glm::vec2 ScreenPoint(
+                (float) MouseX / (float) DISPLAY_WIDTH,
+                1.0f - (float) MouseY / (float) DISPLAY_HEIGHT);
 
         for (int i = 0; i < BodyCount; ++i) {
             for (int j = 0; j < i; ++j) {
@@ -485,17 +445,9 @@ main(int argc, char *argv[])
             BodyPosition[i] += BodyVelocity[i];
         }
 
-        glm::vec3 FocusedEyePos = EyeDistance * SphericalToCartesian(EyeRotation) + BodyPosition[FocusedBody];
+        CameraParams.Focus = BodyPosition[FocusedBody];
 
-        glm::vec3 Up(0.0f, 1.0f, 0.0f);
-        glm::mat4 View = glm::lookAt(
-                FocusedEyePos,
-                BodyPosition[FocusedBody],
-                Up);
-
-        glm::mat4 PVTransform = Perspective * View;
-        glm::mat4 PVInverse = glm::inverse(PVTransform);
-        glm::mat4 AxesView = PVTransform;
+        camera Camera = CameraParams.MakeCamera();
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -505,29 +457,23 @@ main(int argc, char *argv[])
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
         for (int i = 0; i < BodyCount; ++i) {
-            glm::mat4 MVPTransform = PVTransform * glm::translate(glm::mat4(), BodyPosition[i]);
+            glm::mat4 MVPTransform = Camera.FullTransform * glm::translate(glm::mat4(), BodyPosition[i]);
             glUniformMatrix4fv(TransformLocation, 1, GL_FALSE, &MVPTransform[0][0]);
             glDrawElements(GL_TRIANGLES, Sphere.IndexCount, GL_UNSIGNED_SHORT, 0);
         }
 
-        glm::vec3 Look = -SphericalToCartesian(EyeRotation); // Body - Eye
-
-        glm::vec4 CameraPoint(
-                HalfScreenInCameraSpace.x * (2.0f * ScreenPoint.x - 1.0f),
-                HalfScreenInCameraSpace.y * (1.0f - 2.0f * ScreenPoint.y),
-                -1.0f, 0.0f);
-        glm::vec3 WorldPointingDir = glm::normalize(glm::inverse(View) * CameraPoint);
+        glm::vec3 WorldPointingDir = Camera.WorldDirectionFromScreen(ScreenPoint);
 
         if (PrintClickedBody) {
             for (int i = 0; i < BodyCount; ++i) {
                 // TODO: Closest
-                int Result = LineSphereIntersect(BodyPosition[i], 1.0f, FocusedEyePos, WorldPointingDir);
+                int Result = LineSphereIntersect(BodyPosition[i], 1.0f, Camera.Position, WorldPointingDir);
                 printf("%d: %d\n", i, Result);
             }
         }
 
-        glm::vec3 Line0 = FocusedEyePos + Look;
-        glm::vec3 Line1 = FocusedEyePos + WorldPointingDir;
+        glm::vec3 Line0 = Camera.Position + Camera.LookVector;
+        glm::vec3 Line1 = Camera.Position + WorldPointingDir;
 
         float Line[3*2];
         Line[0] = Line0.x;
@@ -538,7 +484,7 @@ main(int argc, char *argv[])
         Line[5] = Line1.z;
 
         glDepthFunc(GL_ALWAYS);
-        glUniformMatrix4fv(TransformLocation, 1, GL_FALSE, &PVTransform[0][0]);
+        glUniformMatrix4fv(TransformLocation, 1, GL_FALSE, &Camera.FullTransform[0][0]);
         glBindBuffer(GL_ARRAY_BUFFER, LineVertBuf);
         glBufferData(GL_ARRAY_BUFFER, sizeof(Line), Line, GL_STREAM_DRAW);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
