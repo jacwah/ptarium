@@ -36,7 +36,7 @@ DebugMessageCallback(
 }
 
 void
-DebugError(const char *Filename, int Line)
+DebugGLError(const char *Filename, int Line)
 {
     GLenum Error;
 
@@ -80,7 +80,7 @@ DebugError(const char *Filename, int Line)
     }
 }
 
-#define DEBUGERR() DebugError(__FILE__, __LINE__)
+#define DEBUG_GL() DebugGLError(__FILE__, __LINE__)
 
 GLuint
 ShadersCompile()
@@ -364,7 +364,7 @@ main(int argc, char *argv[])
     CameraParams.Distance = 4.0f;
 
     GLuint TransformLocation = glGetUniformLocation(ShaderProgram, "Transform");
-    DEBUGERR();
+    DEBUG_GL();
 
     Uint64 PerformanceHz = SDL_GetPerformanceFrequency();
     Uint64 LastTime = SDL_GetPerformanceCounter();
@@ -500,7 +500,7 @@ main(int argc, char *argv[])
 
         glDisableVertexAttribArray(0);
 
-        DEBUGERR();
+        DEBUG_GL();
 
         Uint64 CurrentTime = SDL_GetPerformanceCounter();
         FrameLength = (CurrentTime - LastTime) / (float)PerformanceHz;
