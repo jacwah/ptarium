@@ -1,0 +1,59 @@
+!$$SOF
+
+! Return address
+EMAIL_ADDR = 'jacob@dstsrc.net'
+
+! Sun, planets and Pluto
+! Can also do moons, satellites etc
+COMMAND = '10'
+	  '199'
+	  '299'
+	  '399'
+	  '499'
+	  '599'
+	  '699'
+	  '799'
+	  '899'
+	  '999'
+
+! Object summary
+OBJ_DATA = 'YES'
+
+! Ephemeris
+MAKE_EPHEM = 'YES'
+
+! Cartesian vectors
+TABLE_TYPE = 'VECTORS'
+
+! Solar system barycenter
+CENTER = '@0'
+
+! XY-plane
+REF_PLANE = 'ECLIPTIC'
+
+! Time interval
+START_TIME = '2018-Jan-1 00:00'
+STOP_TIME = '2018-Jan-1 00:01'
+
+STEP_SIZE = '1d'
+
+REF_SYSTEM = 'J2000'
+
+! Astronomical units, days
+! OUT_UNITS = 'AU-D'
+OUT_UNITS = 'KM-S'
+
+! State vector (x,y,z,Vx,Vy,Vz)
+VEC_TABLE = 2
+
+! Correction
+VEC_CORR = 'NONE'
+
+! UTC
+TIME_ZONE = '+00:00'
+
+CSV_FORMAT = 'YES'
+
+VEC_DELTA_T = 'NO'
+
+!$$EOF

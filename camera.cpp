@@ -3,7 +3,7 @@
 #include <math.h>
 #include <glm/gtc/matrix_transform.hpp>
 
-const glm::vec3 Up(0.0f, 1.0f, 0.0f);
+const glm::vec3 Up(0.0f, 0.0f, 1.0f);
 
 camera
 camera_params::MakeCamera()

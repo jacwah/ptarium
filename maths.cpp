@@ -11,8 +11,8 @@ SphericalToCartesian(glm::vec2 Spherical)
 
     return glm::vec3(
             SinPitch * CosYaw,
-            CosPitch,
-            SinPitch * SinYaw);
+            SinPitch * SinYaw,
+            CosPitch);
 }
 
 /* 1 in front, 0 none, -1 behind. */

@@ -1,5 +1,7 @@
 #include "camera.h"
+#include "file.h"
 #include "maths.h"
+#include "world.h"
 #include "shaders.inc"
 
 #include <GL/glew.h>
@@ -258,6 +260,19 @@ struct sphere_pos {
 int
 main(int argc, char *argv[])
 {
+    FILE *File = fopen("planets.csv", "r");
+    world *World = (world *) malloc(sizeof(world));
+    ReadWorldFile(World, File);
+    World->Count = 1;
+    //World->Name[0] = "Test";
+    World->Radius[0] = 1000.0f;
+    World->Mass[0] = 1.0f;
+    World->Position[0] = glm::vec3(100.0f);
+    World->Velocity[0] = glm::vec3(0.0f);
+
+
+    printf("World has %d objects\n", World->Count);
+
     SDL_Init(SDL_INIT_VIDEO);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
@@ -316,20 +331,6 @@ main(int argc, char *argv[])
         0.0f, 0.0f, 1.0f,
     };
 
-    const int BodyCount = 2;
-    glm::vec3 BodyPosition[BodyCount] = {
-        glm::vec3(0.0f, 0.0f, 0.0f),
-        glm::vec3(5.0f, 0.0f, -1.0f),
-    };
-    glm::vec3 BodyVelocity[BodyCount] = {
-        glm::vec3(0),
-        glm::vec3(0),
-    };
-    float BodyMass[BodyCount] = {
-        100000.0f,
-        100000.0f,
-    };
-
     mesh Sphere;
     MeshSphereCreate(&Sphere, 20, 20);
 
@@ -361,7 +362,7 @@ main(int argc, char *argv[])
     CameraParams.FovY = glm::radians(80.0f);
 
     CameraParams.Orientation = {0.0f, PI / 2};
-    CameraParams.Distance = 4.0f;
+    CameraParams.Distance = 1092.0f;
 
     GLuint TransformLocation = glGetUniformLocation(ShaderProgram, "Transform");
     DEBUG_GL();
@@ -379,7 +380,7 @@ main(int argc, char *argv[])
 
     while (Running) {
         SDL_Event Event;
-        float dAngle = glm::radians(5.0f);
+        float dAngle = glm::radians(1.0f);
         bool PrintClickedBody = false;
         while (SDL_PollEvent(&Event)) {
             switch (Event.type) {
@@ -409,11 +410,26 @@ main(int argc, char *argv[])
                         case SDLK_t:
                             PrintFrameTime = !PrintFrameTime;
                             break;
+                        case SDLK_0:
                         case SDLK_1:
-                            FocusedBody = 0;
-                            break;
                         case SDLK_2:
-                            FocusedBody = 1;
+                        case SDLK_3:
+                        case SDLK_4:
+                        case SDLK_5:
+                        case SDLK_6:
+                        case SDLK_7:
+                        case SDLK_8:
+                        case SDLK_9:
+                            FocusedBody = Event.key.keysym.sym - SDLK_0;
+                            printf("Focus %d\n", FocusedBody);
+                            break;
+                        case SDLK_PLUS:
+                            CameraParams.Distance += 1.0f;
+                            printf("Camera distance: %f\n", CameraParams.Distance);
+                            break;
+                        case SDLK_MINUS:
+                            CameraParams.Distance -= 1.0f;
+                            printf("Camera distance: %f\n", CameraParams.Distance);
                             break;
                     }
                 }
@@ -427,25 +443,30 @@ main(int argc, char *argv[])
                 (float) MouseX / (float) DISPLAY_WIDTH,
                 1.0f - (float) MouseY / (float) DISPLAY_HEIGHT);
 
-        for (int i = 0; i < BodyCount; ++i) {
+#if 0
+        for (int i = 0; i < World->Count; ++i) {
             for (int j = 0; j < i; ++j) {
                 float G = 6.674e-11;
-                glm::vec3 Delta = BodyPosition[j] - BodyPosition[i];
+                glm::vec3 Delta = World->Position[j] - World->Position[i];
                 float Distance = glm::length(Delta);
                 glm::vec3 Normal = glm::normalize(Delta);
                 // TODO: Divide by zero/tiny?
                 float ForceWithoutMass = G / (Distance*Distance);
                 glm::vec3 DeltaVelocityWithoutMass = ForceWithoutMass*FrameLength*Normal;
-                BodyVelocity[i] += DeltaVelocityWithoutMass*BodyMass[j];
-                BodyVelocity[j] -= DeltaVelocityWithoutMass*BodyMass[i];
+                World->Velocity[i] += DeltaVelocityWithoutMass*World->Mass[j];
+                World->Velocity[j] -= DeltaVelocityWithoutMass*World->Mass[i];
             }
         }
+#endif
 
-        for (int i = 0; i < BodyCount; ++i) {
-            BodyPosition[i] += BodyVelocity[i];
+        for (int i = 0; i < World->Count; ++i) {
+            World->Position[i] += World->Velocity[i];
         }
 
-        CameraParams.Focus = BodyPosition[FocusedBody];
+        if (FocusedBody < World->Count) {
+            CameraParams.Focus = World->Position[FocusedBody];
+            //CameraParams.Distance = 2.0f * World->Radius[FocusedBody];
+        }
 
         camera Camera = CameraParams.MakeCamera();
 
@@ -456,8 +477,10 @@ main(int argc, char *argv[])
         glBindBuffer(GL_ARRAY_BUFFER, SphereVertBuf);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
-        for (int i = 0; i < BodyCount; ++i) {
-            glm::mat4 MVPTransform = Camera.FullTransform * glm::translate(glm::mat4(), BodyPosition[i]);
+        for (int i = 0; i < World->Count; ++i) {
+            glm::mat4 ScaleTransform = glm::scale(glm::mat4(1.0f), glm::vec3(World->Radius[i]));
+            glm::mat4 TranslateTransform = glm::translate(glm::mat4(1.0f), World->Position[i]);
+            glm::mat4 MVPTransform = Camera.FullTransform * TranslateTransform * ScaleTransform;
             glUniformMatrix4fv(TransformLocation, 1, GL_FALSE, &MVPTransform[0][0]);
             glDrawElements(GL_TRIANGLES, Sphere.IndexCount, GL_UNSIGNED_SHORT, 0);
         }
@@ -465,9 +488,9 @@ main(int argc, char *argv[])
         glm::vec3 WorldPointingDir = Camera.WorldDirectionFromScreen(ScreenPoint);
 
         if (PrintClickedBody) {
-            for (int i = 0; i < BodyCount; ++i) {
+            for (int i = 0; i < World->Count; ++i) {
                 // TODO: Closest
-                int Result = LineSphereIntersect(BodyPosition[i], 1.0f, Camera.Position, WorldPointingDir);
+                int Result = LineSphereIntersect(World->Position[i], 1.0f, Camera.Position, WorldPointingDir);
                 printf("%d: %d\n", i, Result);
             }
         }
@@ -483,6 +506,7 @@ main(int argc, char *argv[])
         Line[4] = Line1.y;
         Line[5] = Line1.z;
 
+#if 0
         glDepthFunc(GL_ALWAYS);
         glUniformMatrix4fv(TransformLocation, 1, GL_FALSE, &Camera.FullTransform[0][0]);
         glBindBuffer(GL_ARRAY_BUFFER, LineVertBuf);
@@ -490,6 +514,7 @@ main(int argc, char *argv[])
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
         glDrawArrays(GL_LINES, 0, 2);
         glDepthFunc(GL_LESS);
+#endif
 
         /*
         glUniformMatrix4fv(TransformLocation, 1, GL_FALSE, &AxesView[0][0]);

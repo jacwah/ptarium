@@ -1,5 +1,5 @@
 TARGET = ptarium
 SHADER_TARGET = shaders.inc
 
-SOURCE = ptarium.cpp camera.cpp maths.cpp
+SOURCE = ptarium.cpp camera.cpp maths.cpp file.cpp
 SHADER = shader.vert shader.frag
