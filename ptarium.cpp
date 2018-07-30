@@ -263,13 +263,18 @@ main(int argc, char *argv[])
     FILE *File = fopen("planets.csv", "r");
     world *World = (world *) malloc(sizeof(world));
     ReadWorldFile(World, File);
+#if 0
     World->Count = 1;
     //World->Name[0] = "Test";
-    World->Radius[0] = 1000.0f;
+    World->Radius[0] = 50000.0f;
     World->Mass[0] = 1.0f;
-    World->Position[0] = glm::vec3(100.0f);
+    World->Position[0] = glm::vec3(0.0f);
     World->Velocity[0] = glm::vec3(0.0f);
+#endif
 
+    for (int i = 0; i < World->Count; ++i) {
+        World->Radius[i] *= 10.0f;
+    }
 
     printf("World has %d objects\n", World->Count);
 
@@ -309,6 +314,7 @@ main(int argc, char *argv[])
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_MULTISAMPLE);
     glEnable(GL_LINE_SMOOTH);
+    glLineWidth(0.5f);
 
     float Points[] = {
         0.0f, 0.0f, 0.0f,
@@ -375,12 +381,13 @@ main(int argc, char *argv[])
 
     bool PrintFrameTime = false;
     bool Running = true;
+    bool Wireframe = false;
 
     int FocusedBody = 0;
 
     while (Running) {
         SDL_Event Event;
-        float dAngle = glm::radians(1.0f);
+        float dAngle = glm::radians(5.0f);
         bool PrintClickedBody = false;
         while (SDL_PollEvent(&Event)) {
             switch (Event.type) {
@@ -409,6 +416,10 @@ main(int argc, char *argv[])
                             break;
                         case SDLK_t:
                             PrintFrameTime = !PrintFrameTime;
+                            break;
+                        case SDLK_w:
+                            Wireframe = !Wireframe;
+                            glPolygonMode(GL_FRONT_AND_BACK, Wireframe ? GL_LINE : GL_FILL);
                             break;
                         case SDLK_0:
                         case SDLK_1:
@@ -459,13 +470,16 @@ main(int argc, char *argv[])
         }
 #endif
 
+#if 0
         for (int i = 0; i < World->Count; ++i) {
             World->Position[i] += World->Velocity[i];
         }
+#endif
 
         if (FocusedBody < World->Count) {
             CameraParams.Focus = World->Position[FocusedBody];
-            //CameraParams.Distance = 2.0f * World->Radius[FocusedBody];
+            CameraParams.Distance = 2.0f * World->Radius[FocusedBody];
+            CameraParams.NearDistance = 0.9f * World->Radius[FocusedBody];
         }
 
         camera Camera = CameraParams.MakeCamera();

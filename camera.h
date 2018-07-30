@@ -16,6 +16,7 @@ struct camera_params {
     float FovY;
     float AspectRatio;
     float Distance;
+    float NearDistance;
     glm::vec2 Orientation;
     glm::vec3 Focus;
 

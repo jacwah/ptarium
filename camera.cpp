@@ -13,11 +13,18 @@ camera_params::MakeCamera()
     Camera.HalfScreen = glm::vec2(TanHalfFov * AspectRatio, TanHalfFov);
 
     Camera.Position = Distance * SphericalToCartesian(Orientation) + Focus;
+#if 0
     glm::mat4 Perspective = glm::perspective(
             FovY,
             AspectRatio,
             0.1f,
-            100.0f);
+            100000.0f);
+#else
+    glm::mat4 Perspective = glm::infinitePerspective(
+            FovY,
+            AspectRatio,
+            NearDistance);
+#endif
     glm::mat4 CameraTransform = glm::lookAt(Camera.Position, Focus, Up);
     Camera.FullTransform = Perspective * CameraTransform;
     Camera.InvCameraTransform = glm::inverse(CameraTransform);
