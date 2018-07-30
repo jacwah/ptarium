@@ -15,8 +15,8 @@
 #include <math.h>
 #include <stdio.h>
 
-#define DISPLAY_WIDTH 960
-#define DISPLAY_HEIGHT 540
+#define DISPLAY_WIDTH 1080
+#define DISPLAY_HEIGHT 720
 
 static bool GlobalUsingMessageCallback;
 
@@ -223,9 +223,11 @@ main(int argc, char *argv[])
     World->Velocity[0] = glm::vec3(0.0f);
 #endif
 
+#if 1
     for (int i = 0; i < World->Count; ++i) {
-        World->Radius[i] *= 10.0f;
+        World->Radius[i] *= 100.0f;
     }
+#endif
 
     printf("World has %d objects\n", World->Count);
 
@@ -334,6 +336,7 @@ main(int argc, char *argv[])
     bool PrintFrameTime = false;
     bool Running = true;
     bool Wireframe = false;
+    bool DebugMouseTracing = false;
 
     int FocusedBody = 0;
 
@@ -372,6 +375,9 @@ main(int argc, char *argv[])
                         case SDLK_w:
                             Wireframe = !Wireframe;
                             glPolygonMode(GL_FRONT_AND_BACK, Wireframe ? GL_LINE : GL_FILL);
+                            break;
+                        case SDLK_m:
+                            DebugMouseTracing = !DebugMouseTracing;
                             break;
                         case SDLK_0:
                         case SDLK_1:
@@ -457,13 +463,18 @@ main(int argc, char *argv[])
         if (PrintClickedBody) {
             for (int i = 0; i < World->Count; ++i) {
                 // TODO: Closest
-                int Result = LineSphereIntersect(World->Position[i], 1.0f, Camera.Position, WorldPointingDir);
-                printf("%d: %d\n", i, Result);
+                int Result = LineSphereIntersect(
+                        World->Position[i],
+                        World->Radius[i],
+                        Camera.Position,
+                        WorldPointingDir);
+                if (Result == 1)
+                    printf("%s\n", World->Name[i]);
             }
         }
 
-        glm::vec3 Line0 = Camera.Position + Camera.LookVector;
-        glm::vec3 Line1 = Camera.Position + WorldPointingDir;
+        glm::vec3 Line0 = Camera.Position + 2.0f * CameraParams.NearDistance * Camera.LookVector;
+        glm::vec3 Line1 = Camera.Position + 2.0f * CameraParams.NearDistance * WorldPointingDir;
 
         float Line[3*2];
         Line[0] = Line0.x;
@@ -473,15 +484,16 @@ main(int argc, char *argv[])
         Line[4] = Line1.y;
         Line[5] = Line1.z;
 
-#if 0
-        glDepthFunc(GL_ALWAYS);
-        glUniformMatrix4fv(TransformLocation, 1, GL_FALSE, &Camera.FullTransform[0][0]);
-        glBindBuffer(GL_ARRAY_BUFFER, LineVertBuf);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(Line), Line, GL_STREAM_DRAW);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-        glDrawArrays(GL_LINES, 0, 2);
-        glDepthFunc(GL_LESS);
-#endif
+        if (DebugMouseTracing) {
+            glDepthFunc(GL_ALWAYS);
+            glUniformMatrix4fv(TransformLocation, 1, GL_FALSE, &Camera.FullTransform[0][0]);
+            glUniform3f(ColorLocation, 1.0f, 0.0f, 1.0f);
+            glBindBuffer(GL_ARRAY_BUFFER, LineVertBuf);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(Line), Line, GL_STREAM_DRAW);
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+            glDrawArrays(GL_LINES, 0, 2);
+            glDepthFunc(GL_LESS);
+        }
 
         /*
         glUniformMatrix4fv(TransformLocation, 1, GL_FALSE, &AxesView[0][0]);
