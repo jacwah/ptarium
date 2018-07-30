@@ -208,55 +208,6 @@ MeshSphereCreate(mesh *Mesh, int ParallellCount, int MeridianCount)
     *Vertex++ = 0.0f;
 }
 
-struct sphere_pos {
-    float Radius;
-    float Pitch;
-    float Yaw;
-
-    sphere_pos(float R, float P, float Y)
-        : Radius(R)
-        , Pitch(0)
-        , Yaw(0)
-    {
-        dPitch(P);
-        dYaw(Y);
-    }
-
-    void dPitch(float P)
-    {
-        Pitch += P;
-        if (Pitch > PI)
-            Pitch = PI;
-        else if (Pitch <= 0)
-            // It stuff disappears at 0...
-            Pitch = 0.0001f;
-    }
-
-    void dYaw(float Y)
-    {
-        Yaw += Y;
-        // TODO
-        if (Yaw > 2*PI)
-            Yaw -= 2*PI;
-        else if (Yaw < 0)
-            Yaw += 2*PI;
-    }
-
-    glm::vec3 Cartesian() const
-    {
-        float SinPitch = sinf(Pitch);
-        float CosPitch = cosf(Pitch);
-        float SinYaw = sinf(Yaw);
-        float CosYaw = cosf(Yaw);
-
-        return glm::vec3(
-                Radius * SinPitch * CosYaw,
-                Radius * CosPitch,
-                Radius * SinPitch * SinYaw
-        );
-    }
-};
-
 int
 main(int argc, char *argv[])
 {
