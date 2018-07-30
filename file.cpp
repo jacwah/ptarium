@@ -6,13 +6,6 @@
 
 #define MAX_LINE 256
 
-/*
-		char *Field = Line;
-		while (isspace(*Field)) Field++;
-		Field = strtok(Field, ","); 
-		Field = strtok(Field, ","); 
-*/
-
 static int GetLine(char *Buffer, FILE *File)
 {
 	int Input;
@@ -60,7 +53,8 @@ static int GetCsvFields(char *Fields[], char *Str, int MaxFields)
 void ReadWorldFile(world *World, FILE *File)
 {
 	char Line[MAX_LINE];
-	char *Fields[9];
+	const int NumFields = 12;
+	char *Fields[NumFields];
 	int Lineno = 0;
 	World->Count = 0;
 
@@ -69,25 +63,29 @@ void ReadWorldFile(world *World, FILE *File)
 		if (*Line == '#')
 			continue;
 
-		int NumFields = GetCsvFields(Fields, Line, 9);
-		if (NumFields != 9) {
-			printf("Line %d: expected 9 fields, got %d\n", Lineno, NumFields);
+		int GotFields = GetCsvFields(Fields, Line, NumFields);
+		if (GotFields != NumFields) {
+			printf("Line %d: expected %d fields, got %d\n", Lineno, NumFields, GotFields);
 			continue;
 		}
 
 		strncpy(World->Name[World->Count], Fields[0], MAX_NAME);
-		
-		if (!sscanf(Fields[1], "%f", World->Radius + World->Count)) {
+
+		sscanf(Fields[ 1], "%f", &World->Color[World->Count].x);
+		sscanf(Fields[ 2], "%f", &World->Color[World->Count].y);
+		sscanf(Fields[ 3], "%f", &World->Color[World->Count].z);
+
+		if (!sscanf(Fields[4], "%f", World->Radius + World->Count)) {
 			printf("Line %d, field %d: expected float\n", Lineno, 1);
 			continue;
 		}
-		sscanf(Fields[2], "%f", &World->Mass[World->Count]);
-		sscanf(Fields[3], "%f", &World->Position[World->Count].x);
-		sscanf(Fields[4], "%f", &World->Position[World->Count].y);
-		sscanf(Fields[5], "%f", &World->Position[World->Count].z);
-		sscanf(Fields[6], "%f", &World->Velocity[World->Count].x);
-		sscanf(Fields[7], "%f", &World->Velocity[World->Count].y);
-		sscanf(Fields[8], "%f", &World->Velocity[World->Count].z);
+		sscanf(Fields[ 5], "%f", &World->Mass[World->Count]);
+		sscanf(Fields[ 6], "%f", &World->Position[World->Count].x);
+		sscanf(Fields[ 7], "%f", &World->Position[World->Count].y);
+		sscanf(Fields[ 8], "%f", &World->Position[World->Count].z);
+		sscanf(Fields[ 9], "%f", &World->Velocity[World->Count].x);
+		sscanf(Fields[10], "%f", &World->Velocity[World->Count].y);
+		sscanf(Fields[11], "%f", &World->Velocity[World->Count].z);
 		World->Count++;
 	}
 }

@@ -322,6 +322,7 @@ main(int argc, char *argv[])
     CameraParams.Distance = 1092.0f;
 
     GLuint TransformLocation = glGetUniformLocation(ShaderProgram, "Transform");
+    GLuint ColorLocation = glGetUniformLocation(ShaderProgram, "Color");
     DEBUG_GL();
 
     Uint64 PerformanceHz = SDL_GetPerformanceFrequency();
@@ -447,6 +448,7 @@ main(int argc, char *argv[])
             glm::mat4 TranslateTransform = glm::translate(glm::mat4(1.0f), World->Position[i]);
             glm::mat4 MVPTransform = Camera.FullTransform * TranslateTransform * ScaleTransform;
             glUniformMatrix4fv(TransformLocation, 1, GL_FALSE, &MVPTransform[0][0]);
+            glUniform3f(ColorLocation, World->Color[i].x, World->Color[i].y, World->Color[i].z);
             glDrawElements(GL_TRIANGLES, Sphere.IndexCount, GL_UNSIGNED_SHORT, 0);
         }
 

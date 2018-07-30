@@ -12,4 +12,5 @@ struct world {
 	float Mass[MAX_BODY];
 	glm::vec3 Position[MAX_BODY];
 	glm::vec3 Velocity[MAX_BODY];
+	glm::vec3 Color[MAX_BODY];
 };
